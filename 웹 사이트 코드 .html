@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI 기반 피싱 사이트 탐지기 — Logic1~4 + AI</title>
+  <meta name="color-scheme" content="dark" />
+  <style>
+    :root {
+      --bg0:#0b1020; --bg1:#070a16; --ink:#e5e7eb; --muted:#cbd5e1;
+      --brand1:#7c3aed; --brand2:#06b6d4;
+      --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+      --card:rgba(255,255,255,.045); --line:rgba(255,255,255,.12);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Noto Sans KR,sans-serif;
+      background:radial-gradient(120% 120% at 50% -10%,var(--bg0) 0%,var(--bg1) 70%,#030712 100%);
+      color:var(--ink);min-height:100vh;
+    }
+    .container{max-width:1200px;margin:0 auto;padding:0 16px;}
+    a{color:inherit;text-decoration:none}
+
+    .nav{position:sticky;top:0;z-index:50;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    .navin{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800}
+    .brand .logo{width:36px;height:36px;display:grid;place-items:center;border-radius:12px;background:conic-gradient(from 180deg at 50% 50%,var(--brand1),var(--brand2));}
+    .links{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+    .links a{font-weight:600}
+    .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;border-radius:12px;cursor:pointer}
+    .btn.primary{border:none;background:linear-gradient(90deg,var(--brand1),var(--brand2));color:white}
+
+    .hero{text-align:center;padding:80px 0 40px}
+    .h1{font-size:clamp(32px,6vw,64px);font-weight:900;line-height:1.1;}
+    .grad{background:linear-gradient(90deg,var(--brand1),var(--brand2));-webkit-background-clip:text;color:transparent}
+    .lead{max-width:700px;margin:14px auto;color:var(--muted);line-height:1.5}
+    .urlbar{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    .field{flex:1 1 420px;display:flex;border:1px solid var(--line);background:var(--card);border-radius:12px;}
+    .field input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);padding:12px 14px}
+
+    .section{padding:60px 0 0;}
+    .title{text-align:center;font-size:clamp(24px,3vw,36px);font-weight:800;margin-bottom:16px;}
+    .subtitle{text-align:center;color:var(--muted);max-width:880px;margin:0 auto 20px;}
+
+    .panel{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:16px;}
+    .log{height:300px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:#0b1224;border-radius:10px;padding:12px;border:1px solid var(--line);}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04)}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px;}
+    @media(min-width:900px){.grid{grid-template-columns:repeat(3,1fr);}}
+
+    .spinner{
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:64px;height:64px;border:5px solid rgba(255,255,255,.2);
+      border-top-color:var(--brand1);
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+      display:none;
+    }
+    @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container navin">
+      <div class="brand"><div class="logo">🔎</div><span>Phishing Detector</span></div>
+      <div class="links">
+        <a href="#scan">입력창</a>
+        <a href="#run">실시간 로그</a>
+        <a href="#json">최종 JSON 결과</a>
+        <a href="#shot">사이트 스크린샷</a>
+        <a href="#engines">탐지엔진</a>
+      </div>
+      <button class="btn primary" onclick="startScan()">분석 시작</button>
+    </div>
+  </nav>
+
+  <header class="container hero" id="scan">
+    <h1 class="h1">AI 기반 <span class="grad">피싱 사이트 탐지</span> 대시보드</h1>
+    <p class="lead">Logic1~4 엔진 + AI 분석으로 URL, 네트워크, 코드 레벨 다층 탐지</p>
+    <div class="urlbar">
+      <label class="field">
+        <input id="target" type="url" placeholder="https://의심되는-사이트.com" />
+      </label>
+      <button class="btn primary" onclick="startScan()">스캔</button>
+    </div>
+  </header>
+
+  <main class="container section">
+    <section class="panel">
+      <span id="risk-badge" class="badge ok">대기 중</span>
+      <strong id="result-title" style="margin-left:10px">아직 분석을 시작하지 않았습니다.</strong>
+      <ul id="reasons" style="margin-top:10px;color:var(--muted);line-height:1.6"></ul>
+    </section>
+
+    <section id="run" class="section">
+      <h2 class="title">실시간 로그</h2>
+      <div id="logs" class="log"></div>
+    </section>
+
+    <section id="json" class="section">
+      <h2 class="title">최종 JSON 결과</h2>
+      <div class="panel"><pre id="json-result" class="log"></pre></div>
+    </section>
+
+    <section id="shot" class="section" style="position:relative;">
+      <h2 class="title">사이트 스크린샷</h2>
+      <div class="panel" style="position:relative;min-height:60vh;display:flex;align-items:center;justify-content:center;">
+        <div class="spinner" id="spinner"></div>
+        <img id="shot-img" style="width:100%;max-height:85vh;object-fit:contain;border-radius:12px;background:#111827;opacity:1;transition:opacity .25s ease-out;display:block;"/>
+      </div>
+    </section>
+
+    <section id="engines" class="section reveal">
+      <h2 class="title">탐지 엔진 (Logic1 ~ Logic4 + AI)</h2>
+      <p class="subtitle">각 엔진의 역할과 탐지 방식을 요약</p>
+      <div class="grid">
+        <article class="panel reveal"><span class="badge">Logic1 · URL/CIDR/레퓨테이션</span><h3>도메인·IP·패턴 매칭</h3><p>- WHOIS/네임서버/등록 연차 기반 신뢰도 평가<br>- IDN/동형문자 탐지<br>- CIDR 블랙리스트·ASN 판별<br>- HSTS 정책·리다이렉션 점검</p></article>
+        <article class="panel reveal"><span class="badge">Logic2 · 캡처 기반 탐지</span><h3>스크린샷 비교 분석</h3><p>- 캡처 후 정상 서비스와 유사도 비교<br>- UI/로고/버튼 배치 기반 위장 판별<br>- 이미지 해시·패턴 기반 탐지</p></article>
+        <article class="panel reveal"><span class="badge">Logic3 · DOM/JS 정적 분석</span><h3>코드 시그니처 & 구조 분석</h3><p>- 입력 폼, 키이벤트, 클립보드 접근 탐지<br>- 외부 링크, 피싱 키워드 탐지<br>- 난독화 해제 후 악성 코드 비교</p></article>
+        <article class="panel reveal"><span class="badge">Logic4 · 네트워크 로그 기반 탐지</span><h3>네트워크 트래픽 분석</h3><p>- Origin vs Host 불일치<br>- TLS/SNI, JA3 지문 분석<br>- 비정상 포트·빈도 탐지</p></article>
+        <article class="panel reveal"><span class="badge">AI 분석 · LLM 기반</span><h3>코드 & 문맥 기반 의미 추론</h3><p>- LLM으로 코드 의미 분석<br>- 난독화 해제 코드 문맥 이해<br>- 피싱 패턴 자동 식별</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="container" style="padding:40px 0;color:var(--muted);">
+    <div style="height:1px;margin:40px auto;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent)"></div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;">
+      <p>© <span id="year"></span> Phishing Detector</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Contact</a>
+        <a href="#">Team eclipse</a>
+        <a href="#">민준홍(PM), 원종현, 서준호, 김서진</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const WS_URL="ws://16.184.31.26:8000/ws";
+    const API_BASE="http://16.184.31.26:8000";
+    let ws=null,ready=false;
+    const logs=document.getElementById("logs");
+    const riskBadge=document.getElementById("risk-badge");
+    const resultTitle=document.getElementById("result-title");
+    const reasons=document.getElementById("reasons");
+    const shotImg=document.getElementById("shot-img");
+    const spinner=document.getElementById("spinner");
+    const jsonBox=document.getElementById("json-result");
+
+    function appendLog(t){
+      const d=document.createElement("div");
+      d.textContent="["+new Date().toLocaleTimeString()+"] "+t;
+      logs.appendChild(d);
+      logs.scrollTop=logs.scrollHeight;
+    }
+
+    function setBadge(l){
+      const map={safe:["ok","🟢 안전"],low:["ok","🟡 저위험"],medium:["warn","🟠 중위험"],high:["bad","🔴 고위험"]};
+      const [cls,txt]=map[l]||["ok","정보"];
+      riskBadge.className="badge "+cls;
+      riskBadge.textContent=txt;
+    }
+
+    function setResult(r){
+      spinner.style.display="none";
+      const v=r.verdict||"알 수 없음";
+      const s=r.score!=null?r.score:0;
+      let lvl="safe";
+      if(v.includes("고위험"))lvl="high";
+      else if(v.includes("중위험"))lvl="medium";
+      else if(v.includes("저위험"))lvl="low";
+      setBadge(lvl);
+      resultTitle.textContent=`분석 완료 • ${v} (${s}점)`;
+      reasons.innerHTML="";
+      (r.reasons||[]).forEach(x=>{
+        const li=document.createElement("li");
+        li.textContent=x;
+        reasons.appendChild(li);
+      });
+      if(r.screenshot){
+        shotImg.src=r.screenshot+"?t="+Date.now();
+        shotImg.style.opacity="1";
+      }else{
+        shotImg.src="";shotImg.style.opacity="0";
+      }
+      jsonBox.textContent=JSON.stringify(r,null,2);
+    }
+
+    async function fetchFinal(){
+      appendLog("[REST] GET "+API_BASE+"/get-final.json");
+      try{
+        const res=await fetch(API_BASE+"/get-final.json?ts="+Date.now());
+        if(res.ok)setResult(await res.json());
+      }catch(e){appendLog("에러:"+e);}
+    }
+
+    function connect(){
+      ws=new WebSocket(WS_URL);
+      ws.addEventListener("open",()=>{ready=true;appendLog("WS 연결 성공");});
+      ws.addEventListener("message",e=>{
+        const m=e.data;appendLog(m);
+        if(m.includes("분석 종료"))setTimeout(fetchFinal,400);
+      });
+    }
+    connect();
+
+    async function startScan(){
+      const u=document.getElementById("target").value.trim();
+      if(!u)return;
+      logs.innerHTML="";
+      jsonBox.textContent=""; // ✅ 기존 JSON 결과 초기화
+      spinner.style.display="block";
+      shotImg.style.opacity="0";
+      appendLog("분석 요청: "+u);
+      resultTitle.textContent="🔍 탐지 중...";
+      setBadge("safe");
+      if(ready)ws.send(JSON.stringify({action:"analyze",url:u}));
+    }
+
+    // ✅ 엔터 입력 시 자동 탐지 실행
+    document.getElementById("target").addEventListener("keypress", e => {
+      if (e.key === "Enter") startScan();
+    });
+
+    document.getElementById("year").textContent=new Date().getFullYear();
+  </script>
+</body>
+</html>

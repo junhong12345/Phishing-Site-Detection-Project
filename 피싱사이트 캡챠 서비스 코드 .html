@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 봇 차단 페이지</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #0b0f19; /* 블랙 배경 */
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+      color: #f1f5f9; /* 밝은 글씨 */
+    }
+    .captcha-box {
+      background: #1e293b; /* 어두운 박스 */
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      text-align: center;
+      width: 360px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      color: #fff;
+    }
+    h3 {
+      margin: 0 0 20px;
+      font-size: 16px;
+      font-weight: 400;
+      color: #cbd5e1;
+    }
+    #captcha-question {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+      color: #38bdf8; /* 파란색 강조 */
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #f1f5f9;
+      outline: none;
+    }
+    input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56,189,248,0.4);
+    }
+    button {
+      margin-top: 16px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background: #38bdf8;
+      color: #0f172a;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0ea5e9;
+    }
+    #captcha-error {
+      color: #f87171;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="captcha-box">
+    <h2>AI 봇 차단 페이지</h2>
+    <h3>캡챠 인증 (대소문자 구분)</h3>
+    <p id="captcha-question"></p>
+    <input id="captcha-answer" type="text" placeholder="입력" />
+    <button onclick="checkCaptcha()">확인</button>
+    <div id="captcha-error">❌ 잘못 입력했습니다. 다시 시도하세요.</div>
+  </div>
+
+  <script>
+    let captchaText;
+    function generateCaptcha(){
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let result = "";
+      for(let i=0;i<6;i++){
+        result += chars.charAt(Math.floor(Math.random()*chars.length));
+      }
+      captchaText = result;
+      document.getElementById('captcha-question').textContent = `해당 문자를 입력하시요: ${captchaText}`;
+    }
+
+    function checkCaptcha(){
+      const ans = document.getElementById('captcha-answer').value.trim();
+      if(ans === captchaText){
+        window.location.href = "http://13.209.89.214"; // ✅ 성공 시 detector.html로 이동
+      } else {
+        document.getElementById('captcha-error').style.display = 'block';
+      }
+    }
+    window.addEventListener('DOMContentLoaded', generateCaptcha);
+  </script>
+</body>
+</html>
